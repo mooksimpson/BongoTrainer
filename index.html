@@ -269,15 +269,15 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     <section class="stage">
       <div class="drums">
         <div class="drum-unit">
-          <div class="drum low" id="drumLow" data-drum="L">
-            <span class="strokebadge" id="badgeLow"></span>
-            <span class="label"><b>HEMBRA</b>low / big</span>
-          </div>
-        </div>
-        <div class="drum-unit">
           <div class="drum high" id="drumHigh" data-drum="H">
             <span class="strokebadge" id="badgeHigh"></span>
             <span class="label"><b>MACHO</b>high / small</span>
+          </div>
+        </div>
+        <div class="drum-unit">
+          <div class="drum low" id="drumLow" data-drum="L">
+            <span class="strokebadge" id="badgeLow"></span>
+            <span class="label"><b>HEMBRA</b>low / big</span>
           </div>
         </div>
       </div>
@@ -305,7 +305,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         <div class="ctl">
           <label>Options</label>
           <div class="toggles">
-            <button class="toggle on" id="tgMetro"><span class="led"></span>Metronome</button>
+            <button class="toggle" id="tgMetro"><span class="led"></span>Metronome</button>
             <button class="toggle on" id="tgCount"><span class="led"></span>Count-in</button>
             <button class="toggle on" id="tgLoop"><span class="led"></span>Loop</button>
           </div>
@@ -368,7 +368,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   </div>
 
   <div class="foot">
-    <b>How to hold them:</b> drums between your knees, the small high drum (macho) toward your strong hand. Tap a drum head with your mouse or finger any time to hear it.<br>
+    <b>How to hold them:</b> drums between your knees, the small high drum (macho) on your left, the big low drum (hembra) on your right. If you play left-handed, mirror it. Tap a drum head with your mouse or finger any time to hear it.<br>
     Built for you, Mook. Drop this single file on GitHub, point Vercel at it, done.
   </div>
 </div>
@@ -538,11 +538,19 @@ function playStroke(drum,stroke,t,vel){
     o1.connect(g); o2.connect(g2); g2.connect(g); g.connect(master);
     o1.start(t);o2.start(t);o1.stop(t+0.5);o2.stop(t+0.4);
     noise(t,0.025,'bandpass',low?420:820,0.7,0.22*vel);
-  } else if(stroke==='s'){ // slap, sharp crack
-    noise(t,0.05,'highpass',low?1600:2400,0.5,0.85*vel);
-    const o=ctx.createOscillator(),g=ctx.createGain();
-    o.type='triangle'; o.frequency.setValueAtTime(f0*2.1,t); o.frequency.exponentialRampToValueAtTime(f0*1.4,t+0.04);
-    env(g,t,0.5*vel,0.001,0.05); o.connect(g); g.connect(master); o.start(t); o.stop(t+0.1);
+  } else if(stroke==='s'){ // slap: dry, sharp, pitched pop (not a snare buzz)
+    // very short attack click, tightly bandpassed so it cracks without ringing like wires
+    noise(t,0.010,'bandpass',low?1500:2800,2.2,0.5*vel);
+    // pitched "pak" body: snaps up then drops fast, short decay = dry, no tail
+    const o1=ctx.createOscillator(), o2=ctx.createOscillator();
+    const g=ctx.createGain(), g2=ctx.createGain();
+    o1.type='triangle'; o2.type='sine';
+    o1.frequency.setValueAtTime(f0*2.7,t); o1.frequency.exponentialRampToValueAtTime(f0*1.55,t+0.028);
+    o2.frequency.setValueAtTime(f0*1.7,t);  o2.frequency.exponentialRampToValueAtTime(f0*1.05,t+0.05);
+    g2.gain.value=0.45; o2.connect(g2); g2.connect(g);
+    env(g,t,0.72*vel,0.001, low?0.075:0.055);
+    o1.connect(g); g.connect(master);
+    o1.start(t); o2.start(t); o1.stop(t+0.16); o2.stop(t+0.16);
   } else if(stroke==='p'){ // heel, low thud
     const o=ctx.createOscillator(),g=ctx.createGain();
     o.type='sine'; o.frequency.setValueAtTime(f0*0.78,t); o.frequency.exponentialRampToValueAtTime(f0*0.6,t+0.08);
@@ -609,7 +617,8 @@ function scheduler(){
       const slot = g % totalSlots();
       const cell = lesson().pat[slot];
       const onBeat = (slot % slotsPerBeat())===0;
-      if(state.metro && onBeat) metroClick(nextTime, slot===0 ? true:false);
+      const wantClick = (state.mode==='practice') ? true : state.metro;
+      if(wantClick && onBeat) metroClick(nextTime, slot===0 ? true:false);
       if(cell){
         const vel = cell.acc?1.0:0.62;
         if(state.mode!=='practice') playStroke(cell.d, cell.s, nextTime, vel);
@@ -685,6 +694,9 @@ let prevEnergy=0;
 
 async function startListening(){
   try{
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      throw new DOMException('no mediaDevices','NotSupportedError');
+    }
     if(!micStream){
       micStream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
       micSrc = ctx.createMediaStreamSource(micStream);
@@ -696,12 +708,30 @@ async function startListening(){
     }
     grade={hits:0,inTime:0,offsets:[]};
     updateGradeUI();
+    setEar('listening...');
     lastOnset=0; prevEnergy=0;
     micLoop();
   }catch(e){
-    setEar('mic blocked');
-    setMsg("The ear could not reach your microphone. Allow mic access in the browser, then press Practice again. You can still use <b>Hear it</b> and the metronome without it.");
+    micFailed(e);
   }
+}
+function micFailed(e){
+  const inFrame = (function(){ try{ return window.self !== window.top; }catch(_){ return true; } })();
+  const n = e && e.name;
+  let why;
+  if(inFrame){
+    why = "The mic is blocked because this is running inside an embedded preview frame, which is not allowed to use the microphone. Open the deployed page (or this file) in its own browser tab and it will ask for mic permission.";
+  } else if(n==='NotAllowedError' || n==='SecurityError'){
+    why = "The browser denied microphone access. Click the mic icon in the address bar, allow it for this page, then press Practice again.";
+  } else if(n==='NotFoundError' || n==='DevicesNotFoundError'){
+    why = "No microphone was found. Connect or select an input device, then press Practice again.";
+  } else if(n==='NotSupportedError'){
+    why = "This page needs to be served over HTTPS in its own tab for mic access. The deployed Vercel version will work.";
+  } else {
+    why = "The ear could not reach your microphone. Allow mic access and try again.";
+  }
+  setEar('mic off');
+  setMsg(why + " The click and the moving playhead are still running, so you can practice to the beat by feel. Grading just needs the mic.");
 }
 function stopListening(){ if(micRAF) cancelAnimationFrame(micRAF); micRAF=null; }
 
@@ -811,6 +841,7 @@ let calStep=0;
 function startCal(){
   initAudio(); resumeAudio();
   startListening().then(()=>{
+    if(!analyser){ return; } // mic failed; micFailed already explained why
     calibrating=true; calStep=0; calData={low:[],high:[]};
     els.btnCal.classList.add('on');
     setEar('calibrating');
@@ -884,7 +915,7 @@ function renderLessons(){
       <span class="nm">${L.n}<small>${L.focus}</small></span>
       <span class="chk">✓</span>`;
     row.querySelector('.chk').addEventListener('click',e=>{ e.stopPropagation(); toggleDone(i); });
-    row.addEventListener('click',()=>loadLesson(i));
+    row.addEventListener('click',()=>loadLesson(i, true));
     list.appendChild(row);
   });
   els.progCount.textContent = Object.values(state.done).filter(Boolean).length+' / '+LESSONS.length;
@@ -911,14 +942,15 @@ function renderNote(){
   els.nowTier.textContent = state.idx<TIER1_COUNT?'Tier 1':'Tier 2';
 }
 
-function loadLesson(i){
-  const wasPlaying=playing; stopTransport(false);
+function loadLesson(i, autoplay){
+  stopTransport(false);
   state.idx=i; save('lastIdx',i);
   renderStrip(); renderNote(); renderLessons();
   // reset ear readouts
   grade={hits:0,inTime:0,offsets:[]}; updateGradeUI();
   els.lastHit.textContent='·'; els.lastHitSub.textContent='waiting for your hands';
   els.coach.textContent=''; needleTo(0);
+  if(autoplay){ startTransport('hear'); }
 }
 
 /* ---------- transport UI ---------- */
@@ -1007,7 +1039,7 @@ function wire(){
 function boot(){
   // restore saved prefs
   state.bpm = load('bpm',90); state.vol=load('vol',0.85);
-  state.metro=load('metro',true); state.countIn=load('countIn',true); state.loop=load('loop',true);
+  state.metro=load('metro',false); state.countIn=load('countIn',true); state.loop=load('loop',true);
   state.latency=load('lat',60); state.centroidThresh=load('cthresh',1500);
   state.idx=Math.min(load('lastIdx',0),LESSONS.length-1);
 
