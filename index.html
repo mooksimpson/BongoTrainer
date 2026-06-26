@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MARTILLO · bongo trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#15100c;
+  --bg2:#1d1610;
+  --panel:#231a13;
+  --panel2:#2b2018;
+  --line:#3a2c20;
+  --skin:#e9d9b6;
+  --skin-dim:#c9b58a;
+  --low:#b5482e;      /* hembra, big drum */
+  --low-glow:#ff7a4d;
+  --high:#e2a73c;     /* macho, small drum */
+  --high-glow:#ffd070;
+  --flash:#fff3d6;
+  --ink:#efe6d4;
+  --mut:#a8967a;
+  --mut2:#7a6b56;
+  --good:#7bbf6a;
+  --warn:#e0a23a;
+  --bad:#d8643f;
+  --radius:14px;
+  font-size:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{
+  background:radial-gradient(1200px 700px at 70% -10%, #241a12 0%, var(--bg) 55%) fixed;
+  color:var(--ink);
+  font-family:"Bricolage Grotesque", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+.mono{font-family:"Space Mono", ui-monospace, monospace}
+button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none}
+h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.01em}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1180px;margin:0 auto;padding:18px clamp(12px,3vw,28px) 60px}
+header.top{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:18px;
+  flex-wrap:wrap;margin-bottom:18px;
+}
+.brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.brand h1{
+  font-size:clamp(28px,5vw,46px);line-height:.9;
+  background:linear-gradient(180deg,var(--skin),var(--high));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.brand .sub{color:var(--mut);font-size:13px;max-width:34ch;line-height:1.25}
+.nowlesson{
+  text-align:right;font-size:13px;color:var(--mut)
+}
+.nowlesson .ttl{color:var(--ink);font-size:17px;font-weight:600;display:block}
+.tierpill{
+  display:inline-block;margin-top:4px;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;padding:3px 9px;border-radius:99px;border:1px solid var(--line);
+  color:var(--mut)
+}
+
+.grid{display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start}
+@media(max-width:880px){ .grid{grid-template-columns:1fr} }
+
+/* ---------- stage ---------- */
+.stage{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);
+  border-radius:var(--radius);padding:18px clamp(12px,2.5vw,22px) 20px;position:relative;overflow:hidden}
+
+.drums{display:flex;justify-content:center;align-items:flex-end;gap:clamp(14px,4vw,46px);
+  padding:6px 0 12px;perspective:900px}
+.drum-unit{display:flex;flex-direction:column;align-items:center;gap:8px}
+.drum{
+  position:relative;border-radius:50%;
+  background:
+    radial-gradient(circle at 38% 32%, #f3e7c8 0%, var(--skin) 40%, var(--skin-dim) 72%, #a78f63 100%);
+  box-shadow: inset 0 4px 10px rgba(255,255,255,.35), inset 0 -10px 22px rgba(0,0,0,.35),
+              0 16px 30px rgba(0,0,0,.45);
+  transition:transform .05s ease, box-shadow .12s ease;
+  display:grid;place-items:center;cursor:pointer;touch-action:manipulation;
+}
+.drum::before{ /* rim/wood ring */
+  content:"";position:absolute;inset:-12px;border-radius:50%;z-index:-1;
+  background:conic-gradient(from 20deg,#6b4a2c,#3c2817,#7a5630,#3c2817,#6b4a2c);
+  box-shadow:0 10px 26px rgba(0,0,0,.5);
+}
+.drum.low{width:clamp(150px,30vw,236px);height:clamp(150px,30vw,236px)}
+.drum.high{width:clamp(120px,24vw,188px);height:clamp(120px,24vw,188px)}
+.drum .label{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6b4a2c;font-weight:700;
+  pointer-events:none;text-align:center;line-height:1.3}
+.drum .label b{display:block;font-size:15px;letter-spacing:.04em}
+.drum.hit{transform:translateY(2px) scale(.985)}
+.drum.glow-low{box-shadow:inset 0 4px 10px rgba(255,255,255,.35), inset 0 -10px 22px rgba(0,0,0,.35),
+  0 0 0 4px rgba(255,122,77,.5), 0 0 42px 8px var(--low-glow), 0 16px 30px rgba(0,0,0,.45)}
+.drum.glow-high{box-shadow:inset 0 4px 10px rgba(255,255,255,.35), inset 0 -10px 22px rgba(0,0,0,.35),
+  0 0 0 4px rgba(255,208,112,.55), 0 0 42px 8px var(--high-glow), 0 16px 30px rgba(0,0,0,.45)}
+.ripple{position:absolute;border-radius:50%;pointer-events:none;border:2px solid var(--flash);
+  opacity:.9;animation:rip .45s ease-out forwards;mix-blend-mode:screen}
+@keyframes rip{from{transform:scale(.18);opacity:.85}to{transform:scale(1.18);opacity:0}}
+.strokebadge{position:absolute;top:-2px;left:50%;transform:translateX(-50%);
+  font-size:11px;letter-spacing:.12em;color:var(--flash);font-weight:700;text-transform:uppercase;
+  background:rgba(20,12,8,.78);padding:3px 8px;border-radius:99px;opacity:0;pointer-events:none}
+.strokebadge.show{animation:badge .55s ease-out}
+@keyframes badge{0%{opacity:0;transform:translate(-50%,4px)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-14px)}}
+
+/* ---------- pattern strip ---------- */
+.strip{margin-top:6px}
+.strip .lanerow{display:grid;grid-template-columns:54px 1fr;align-items:center;gap:8px;margin:4px 0}
+.lane-name{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut2);text-align:right}
+.lane{position:relative;display:flex;gap:3px}
+.cell{flex:1 1 0;height:30px;border-radius:6px;background:#1b140e;border:1px solid #2c2017;
+  display:grid;place-items:center;position:relative;min-width:0;font-size:11px;font-weight:700}
+.cell.beat{border-color:#46341f}
+.cell.fill-low{background:linear-gradient(180deg,#c4502f,#8d361f);color:#2a140c;border-color:#e0683f}
+.cell.fill-high{background:linear-gradient(180deg,#edb24a,#bd7f24);color:#3a2606;border-color:#ffce6e}
+.cell.accent{outline:2px solid var(--flash);outline-offset:-3px}
+.cell .sym{font-family:"Space Mono",monospace;font-size:12px;line-height:1}
+.playhead-col{position:absolute;top:-2px;bottom:-2px;width:0;border-left:2px solid var(--flash);
+  box-shadow:0 0 12px 2px rgba(255,243,214,.6);pointer-events:none;opacity:0;transition:opacity .1s}
+.countrow{display:grid;grid-template-columns:54px 1fr;gap:8px;margin-top:2px}
+.countrow .counts{display:flex;gap:3px}
+.countrow .c{flex:1 1 0;text-align:center;font-size:10px;color:var(--mut2);font-family:"Space Mono",monospace}
+.countrow .c.on{color:var(--high)}
+
+/* ---------- transport ---------- */
+.transport{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;align-items:center}
+.tbtn{
+  border:1px solid var(--line);background:var(--panel2);padding:11px 16px;border-radius:11px;
+  font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:8px;transition:.12s;
+  min-height:46px
+}
+.tbtn:hover{border-color:#5a4631;background:#33271c}
+.tbtn:active{transform:translateY(1px)}
+.tbtn.primary{background:linear-gradient(180deg,var(--high),#c0851f);color:#241600;border-color:#ffcd6b}
+.tbtn.primary:hover{filter:brightness(1.06)}
+.tbtn.live{background:linear-gradient(180deg,var(--low),#8c331c);color:#fff0e6;border-color:#ff7a4d}
+.tbtn.stop{background:#2a1f17}
+.tbtn.on{outline:2px solid var(--high);outline-offset:1px}
+.tbtn .dot{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.5}
+.tbtn.armed .dot{opacity:1;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:.15}}
+
+/* ---------- knobs row ---------- */
+.controls{display:flex;flex-wrap:wrap;gap:14px 20px;margin-top:16px;
+  padding-top:16px;border-top:1px solid var(--line);align-items:center}
+.ctl{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ctl label{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--mut2)}
+.tempo{display:flex;align-items:center;gap:10px}
+.tempo .bpm{font-family:"Space Mono",monospace;font-size:30px;font-weight:700;min-width:74px;text-align:center;color:var(--skin)}
+.tempo .bpm small{font-size:11px;color:var(--mut);letter-spacing:.1em}
+.stepb{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);
+  font-size:20px;font-weight:700;display:grid;place-items:center}
+.stepb:active{transform:translateY(1px)}
+input[type=range]{-webkit-appearance:none;appearance:none;height:5px;border-radius:99px;
+  background:#3a2c20;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;
+  background:var(--high);border:2px solid #1a130d;box-shadow:0 2px 6px rgba(0,0,0,.4);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--high);
+  border:2px solid #1a130d;cursor:pointer}
+.range-w{width:clamp(120px,18vw,170px)}
+.toggles{display:flex;gap:8px;flex-wrap:wrap}
+.toggle{border:1px solid var(--line);background:var(--panel2);padding:9px 12px;border-radius:10px;
+  font-size:13px;display:inline-flex;gap:8px;align-items:center;min-height:42px}
+.toggle .led{width:9px;height:9px;border-radius:50%;background:#4a3725;transition:.15s}
+.toggle.on{border-color:var(--high)}
+.toggle.on .led{background:var(--high);box-shadow:0 0 10px var(--high-glow)}
+.taptempo{border:1px dashed var(--line);background:transparent;padding:9px 12px;border-radius:10px;font-size:13px;color:var(--mut);min-height:42px}
+
+/* ---------- feedback console ---------- */
+.console{margin-top:16px;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;
+  background:linear-gradient(180deg,#1a130d,#140e09)}
+.console .head{display:flex;justify-content:space-between;align-items:center;padding:11px 14px;
+  border-bottom:1px solid var(--line)}
+.console .head h3{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.console .body{padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:520px){.console .body{grid-template-columns:1fr}}
+.meter{grid-column:1/-1}
+.tuner{position:relative;height:58px;border-radius:10px;background:#120c08;border:1px solid #2c2017;overflow:hidden}
+.tuner .mid{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#46341f}
+.tuner .zone{position:absolute;top:0;bottom:0;left:42%;width:16%;background:rgba(123,191,106,.12)}
+.tuner .needle{position:absolute;top:6px;bottom:6px;left:50%;width:3px;border-radius:2px;background:var(--flash);
+  box-shadow:0 0 10px var(--flash);transition:left .08s ease, background .1s}
+.tuner .lab{position:absolute;bottom:4px;font-size:9px;color:var(--mut2);letter-spacing:.1em}
+.tuner .lab.l{left:8px}.tuner .lab.r{right:8px}
+.readout{display:flex;flex-direction:column;gap:4px}
+.readout .big{font-family:"Space Mono",monospace;font-size:26px;font-weight:700}
+.readout .sub{font-size:12px;color:var(--mut)}
+.stat{display:flex;flex-direction:column;gap:3px}
+.stat .v{font-family:"Space Mono",monospace;font-size:22px;font-weight:700;color:var(--skin)}
+.stat .k{font-size:11px;color:var(--mut2);letter-spacing:.08em;text-transform:uppercase}
+.msg{grid-column:1/-1;min-height:22px;font-size:14px;color:var(--mut)}
+.msg b{color:var(--ink)}
+.coachline{grid-column:1/-1;font-size:13px;color:var(--high);min-height:18px}
+.miccal{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--mut)}
+
+/* ---------- lesson rail ---------- */
+.rail{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);
+  border-radius:var(--radius);overflow:hidden;position:sticky;top:14px}
+.rail .railhead{padding:13px 14px;border-bottom:1px solid var(--line);display:flex;
+  justify-content:space-between;align-items:center}
+.rail .railhead h2{font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.rail .prog{font-size:12px;color:var(--mut2);font-family:"Space Mono",monospace}
+.tierlabel{padding:10px 14px 6px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--high);position:sticky;top:0;background:var(--panel);z-index:1}
+.tierlabel.two{color:var(--low-glow)}
+.list{max-height:62vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#4a3725 transparent}
+@media(max-width:880px){.list{max-height:none}}
+.lrow{display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid #241a13;
+  cursor:pointer;transition:background .1s}
+.lrow:hover{background:#2a2017}
+.lrow.active{background:linear-gradient(90deg,rgba(226,167,60,.18),transparent);
+  box-shadow:inset 3px 0 0 var(--high)}
+.lrow .num{font-family:"Space Mono",monospace;font-size:12px;color:var(--mut2);width:22px;flex:none}
+.lrow .nm{font-size:14px;flex:1;line-height:1.15}
+.lrow .nm small{display:block;color:var(--mut2);font-size:11px;font-weight:400}
+.lrow .chk{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line);flex:none;
+  display:grid;place-items:center;font-size:12px;color:transparent}
+.lrow.done .chk{background:var(--good);border-color:var(--good);color:#0f1a0c}
+
+/* ---------- lesson note ---------- */
+.note{margin-top:14px;border:1px solid var(--line);border-radius:var(--radius);
+  background:#1a130d;padding:14px 16px}
+.note h3{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--high);margin-bottom:6px}
+.note p{margin:0;font-size:14px;line-height:1.5;color:var(--ink)}
+.note .focus{margin-top:8px;font-size:13px;color:var(--mut)}
+
+/* ---------- legend ---------- */
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px;padding:12px 14px;
+  border:1px solid var(--line);border-radius:var(--radius);background:#1a130d;font-size:12px;color:var(--mut)}
+.legend .li{display:flex;align-items:center;gap:7px}
+.legend .sw{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;
+  font-family:"Space Mono",monospace;font-weight:700;font-size:12px}
+
+.foot{margin-top:26px;text-align:center;color:var(--mut2);font-size:12px;line-height:1.6}
+.foot b{color:var(--mut)}
+
+.hint{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#2b2018;border:1px solid var(--line);
+  padding:11px 18px;border-radius:99px;font-size:13px;color:var(--ink);box-shadow:0 10px 30px rgba(0,0,0,.5);
+  z-index:30;display:none}
+.hint.show{display:block;animation:hintin .3s ease}
+@keyframes hintin{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001ms!important;transition-duration:.02ms!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>MARTILLO</h1>
+      <div class="sub">A bongo trainer, from your first open tone to a solo. Forty steps, a live ear, and the two drums lighting up so you can watch the groove.</div>
+    </div>
+    <div class="nowlesson">
+      <span class="ttl" id="nowTitle">Loading...</span>
+      <span class="tierpill" id="nowTier">Tier 1</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- STAGE -->
+    <section class="stage">
+      <div class="drums">
+        <div class="drum-unit">
+          <div class="drum low" id="drumLow" data-drum="L">
+            <span class="strokebadge" id="badgeLow"></span>
+            <span class="label"><b>HEMBRA</b>low / big</span>
+          </div>
+        </div>
+        <div class="drum-unit">
+          <div class="drum high" id="drumHigh" data-drum="H">
+            <span class="strokebadge" id="badgeHigh"></span>
+            <span class="label"><b>MACHO</b>high / small</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="strip" id="strip"></div>
+
+      <div class="transport">
+        <button class="tbtn primary" id="btnHear"><span class="dot"></span>Hear it</button>
+        <button class="tbtn live" id="btnPractice"><span class="dot"></span>Practice (listen)</button>
+        <button class="tbtn" id="btnPlayAlong"><span class="dot"></span>Play along</button>
+        <button class="tbtn stop" id="btnStop">Stop</button>
+      </div>
+
+      <div class="controls">
+        <div class="ctl">
+          <label>Tempo</label>
+          <div class="tempo">
+            <button class="stepb" id="bpmDown">–</button>
+            <div class="bpm" id="bpmVal">90<small> bpm</small></div>
+            <button class="stepb" id="bpmUp">+</button>
+            <input type="range" class="range-w" id="bpmRange" min="40" max="200" value="90" step="1">
+            <button class="taptempo" id="tapTempo">Tap tempo</button>
+          </div>
+        </div>
+        <div class="ctl">
+          <label>Options</label>
+          <div class="toggles">
+            <button class="toggle on" id="tgMetro"><span class="led"></span>Metronome</button>
+            <button class="toggle on" id="tgCount"><span class="led"></span>Count-in</button>
+            <button class="toggle on" id="tgLoop"><span class="led"></span>Loop</button>
+          </div>
+        </div>
+        <div class="ctl">
+          <label>Volume</label>
+          <input type="range" class="range-w" id="volRange" min="0" max="100" value="85" step="1">
+        </div>
+      </div>
+
+      <!-- FEEDBACK CONSOLE -->
+      <div class="console">
+        <div class="head">
+          <h3>The Ear</h3>
+          <span class="mono" id="earState" style="font-size:12px;color:var(--mut2)">idle</span>
+        </div>
+        <div class="body">
+          <div class="meter">
+            <div class="tuner">
+              <div class="zone"></div>
+              <div class="mid"></div>
+              <div class="needle" id="needle"></div>
+              <span class="lab l">rushing</span>
+              <span class="lab r">dragging</span>
+            </div>
+          </div>
+          <div class="readout">
+            <div class="big" id="lastHit">·</div>
+            <div class="sub" id="lastHitSub">waiting for your hands</div>
+          </div>
+          <div class="stat" style="display:flex;flex-direction:row;gap:18px">
+            <div><div class="v" id="statAcc">·</div><div class="k">in time</div></div>
+            <div><div class="v" id="statHits">0</div><div class="k">hits</div></div>
+            <div><div class="v" id="statOff">0<small style="font-size:11px"> ms</small></div><div class="k">avg offset</div></div>
+          </div>
+          <div class="coachline" id="coach"></div>
+          <div class="msg" id="msg">Press <b>Practice</b> and play along. The ear listens through your mic, checks your timing against the click, and tries to tell the low drum from the high drum.</div>
+          <div class="miccal">
+            <button class="toggle" id="btnCal"><span class="led"></span>Calibrate drums</button>
+            <span>Mic latency</span>
+            <input type="range" id="latRange" min="0" max="220" value="60" step="5" style="width:110px">
+            <span class="mono" id="latVal">60 ms</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="note" id="note"></div>
+
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <!-- LESSON RAIL -->
+    <aside class="rail">
+      <div class="railhead">
+        <h2>Curriculum</h2>
+        <span class="prog" id="progCount">0 / 40</span>
+      </div>
+      <div class="list" id="list"></div>
+    </aside>
+  </div>
+
+  <div class="foot">
+    <b>How to hold them:</b> drums between your knees, the small high drum (macho) toward your strong hand. Tap a drum head with your mouse or finger any time to hear it.<br>
+    Built for you, Mook. Drop this single file on GitHub, point Vercel at it, done.
+  </div>
+</div>
+
+<div class="hint" id="hint"></div>
+
+<script>
+/* ============================================================
+   MARTILLO · bongo trainer
+   Single-file. Web Audio for sound + scheduling, mic for the ear.
+   Stroke codes:  l/h = low(hembra) / high(macho)
+                  o = open tone, s = slap, p = heel (palm), t = tip (fingers)
+   Add ! to a token for an accent, e.g. "ho!"  ;  "." = rest
+   ============================================================ */
+
+/* ---------- curriculum ---------- */
+function P(str){ // parse a space-separated pattern string into slot objects
+  return str.trim().split(/\s+/).map(tok=>{
+    if(tok==='.') return null;
+    const acc = tok.endsWith('!'); const t = acc?tok.slice(0,-1):tok;
+    return { d: t[0]==='l'?'L':'H', s: t[1], acc };
+  });
+}
+// sub = subdivisions per beat (2 eighths, 3 triplets, 4 sixteenths). 4 beats per bar.
+const LESSONS = [
+/* ---- TIER 1 : beginner to intermediate ---- */
+{n:"Meet the hembra", sub:2, pat:P("lo . lo . lo . lo ."),
+ tip:"The big low drum is the hembra. Strike near the edge with four flat fingers, then pull off so it rings. Quarter notes, nice and even.", focus:"Open tone, low drum, steady quarters."},
+{n:"Meet the macho", sub:2, pat:P("ho . ho . ho . ho ."),
+ tip:"The small high drum is the macho. Same open tone, fingers at the edge. Listen for the higher, brighter ring.", focus:"Open tone, high drum, steady quarters."},
+{n:"Trade hands", sub:2, pat:P("lo . ho . lo . ho ."),
+ tip:"Low, high, low, high on each beat. Right hand to the macho, left to the hembra, or swap to suit you. Keep the two tones equally loud.", focus:"Alternating drums, quarter notes."},
+{n:"Steady eighths", sub:2, pat:P("lo lo lo lo lo lo lo lo"),
+ tip:"Now twice as many notes on the low drum. Evenness is the whole game here. Count one and two and three and four and.", focus:"Eighth notes, one drum, even spacing."},
+{n:"Eighths, two drums", sub:2, pat:P("lo ho lo ho lo ho lo ho"),
+ tip:"Alternate low and high on every eighth. This is your hand independence warmup for everything ahead.", focus:"Alternating eighths across both drums."},
+{n:"The rock: heel and tip", sub:2, pat:P("lp lt lp lt lp lt lp lt"),
+ tip:"The engine of bongo playing. Rock your hand on the hembra: heel of the palm down (low thud), then fingertips (lighter tap). Heel, tip, heel, tip. Stay relaxed.", focus:"Heel-tip rocking motion, low drum."},
+{n:"Rock with accents", sub:2, pat:P("lp! lt lp! lt lp! lt lp! lt"),
+ tip:"Same rock, but lean weight into the heel on beats one and three. Soft tips in between. Dynamics are where groove lives.", focus:"Accenting the downbeats inside the rock."},
+{n:"The slap", sub:2, pat:P("lo . ls . lo . ls ."),
+ tip:"A slap is a sharp cracking sound: cupped hand, fingers snapping the head and stopping dead. Open tone on one and three, slap on two and four.", focus:"Open vs slap contrast on the low drum."},
+{n:"Slap the macho", sub:2, pat:P("ho . hs . ho . hs ."),
+ tip:"Same idea up on the small drum. The high slap is your sharpest, most cutting sound. Save it, it speaks loudest.", focus:"High open tone vs high slap."},
+{n:"Martillo skeleton", sub:2, pat:P("lp . ho . lp . ho ."),
+ tip:"Here comes the famous pattern, in bare bones. Heel on the low drum on one and three, open tone on the high drum on two and four. Let the macho sing.", focus:"The bones of the martillo: low heel, high tone."},
+{n:"The martillo", sub:2, pat:P("lp lt ho lt lp lt ho lt"),
+ tip:"Fill the gaps with light low tips and you have it: the martillo, the hammer, the heartbeat of bongo. Heel, tip, HIGH TONE, tip, repeat. This is the one to live in.", focus:"Full basic martillo. Loop it until it is automatic."},
+{n:"Martillo, locked", sub:2, pat:P("lp lt ho lt lp lt ho lt"),
+ tip:"Same pattern, now chasing evenness and relaxation. Drop your shoulders. The tips should be barely there, the tones should ring clear.", focus:"Consistency and a relaxed hand."},
+{n:"Sing the tones", sub:2, pat:P("lp lt ho! lt lp lt ho! lt"),
+ tip:"Accent the two high open tones so the melody pops out over the quiet rocking underneath. The macho is the voice, the hembra is the pulse.", focus:"Accenting the high tones inside the martillo."},
+{n:"Slap accent martillo", sub:2, pat:P("lp lt hs lt lp lt ho lt"),
+ tip:"Swap one tone for a slap. Slap on beat two, open tone on beat four. The contrast gives the groove teeth.", focus:"Mixing slap and open inside the pattern."},
+{n:"Pickup tip", sub:2, pat:P("lp lt ho lt lp lt ho lt!"),
+ tip:"Lean on the very last tip so it leads your ear back to beat one. Small accents at the end of a bar make a loop feel intentional.", focus:"Phrasing the turnaround into beat one."},
+{n:"Open the four", sub:2, pat:P("lp lt ho lt lp lt lo lo"),
+ tip:"Break the pattern on beat four with two low open tones. Your first taste of a fill: the groove states itself, then comments.", focus:"A small fill replacing the last tone."},
+{n:"Crescendo", sub:2, pat:P("lp lt ho lt lp! lt ho! lt"),
+ tip:"Start the bar quiet, grow louder through it. Build the swell with your whole arm, not just the fingers. Control is everything.", focus:"Dynamic build across the bar."},
+{n:"Anticipate one", sub:2, pat:P("lp lt ho lt lp lt ho ho"),
+ tip:"Two high tones at the end, the second one pushing into the next bar. This anticipation is everywhere in Latin music.", focus:"Anticipating the downbeat with a high tone."},
+{n:"Descending fill", sub:2, pat:P("ho ho lo lo ho ho lo lo"),
+ tip:"A pure fill bar: high to low, tumbling down. Drill it on its own, then you can drop it into the martillo whenever the music opens up.", focus:"A reusable two-drum fill."},
+{n:"Groove and fill", sub:2, pat:P("lp lt ho lt lp lt ho lt lp lt ho lt ho ho lo lo"),
+ tip:"Two bars at last: one bar of martillo, one bar that breaks into a fill. State the groove, then answer it. This is how real bongo playing breathes.", focus:"Tier one graduation: call and response."},
+
+/* ---- TIER 2 : intermediate to expert ---- */
+{n:"Martillo at speed", sub:2, pat:P("lp lt ho lt lp lt ho lt"),
+ tip:"Same pattern you know, now push the tempo up and hold the form. Endurance and looseness. If your hand tightens, slow down and rebuild.", focus:"Speed and stamina on the core pattern."},
+{n:"Clave spine", sub:2, pat:P("ho . . lo . . ho . . . lo . ho . . ."),
+ tip:"The hidden grid under all of this is the son clave, a two-bar 3-2 figure. Play just the clave, nothing else, until you feel its lopsided pull. Once it lives in your body, every pattern locks to it.", focus:"Internalising the 3-2 son clave."},
+{n:"Double slap voice", sub:2, pat:P("lp lt hs lt lp lt hs lt"),
+ tip:"Both backbeats become slaps. Brighter, more aggressive, the sound of a bongo cutting through a loud band. Keep the slaps tight and short.", focus:"Slap consistency at both accent points."},
+{n:"Sixteenth control", sub:4, pat:P("lp lt lt lt lp lt lt lt lp lt lt lt lp lt lt lt"),
+ tip:"Four notes per beat. Heel leads each group, three light tips follow. This builds the finger speed every fill depends on.", focus:"Even sixteenth-note rocking on one drum."},
+{n:"Sixteenth tumble", sub:4, pat:P("lo lt ht lt lo lt ht lt lo lt ht lt lo lt ht lt"),
+ tip:"Sixteenths crossing between both drums. Let it roll like water. Accent the low on each beat to keep your place.", focus:"Two-drum sixteenth flow."},
+{n:"Triplet martillo", sub:3, pat:P("lp lt ho lp lt ho lp lt ho lp lt ho"),
+ tip:"Three notes per beat. The martillo idea in a swung, rolling six-eight feel. Count one-trip-let two-trip-let. A whole different mood.", focus:"The pattern reimagined in triplets."},
+{n:"Bolero feel", sub:2, pat:P("lp lt ho . lp lt ho ."),
+ tip:"Slower, spacious, romantic. Let the open tones hang and decay. Space is an instrument too. Drop the tempo for this one.", focus:"Playing with space and sustain."},
+{n:"Cha-cha bongo", sub:2, pat:P("ho lt lo lt ho lt lo lo"),
+ tip:"A bouncy cha-cha-cha lilt. Listen for the two quick low tones at the end that name the dance. Light and springy.", focus:"A dance-specific groove."},
+{n:"Offbeat tones", sub:2, pat:P("lt ho lt ho lt ho lt ho"),
+ tip:"Put every high tone on the and, never the beat. Syncopation feels wrong until it suddenly feels great. Keep an internal pulse on the downbeats.", focus:"Tones on the upbeats only."},
+{n:"Montuno push", sub:2, pat:P("lp ho! lt ho lp lt ho! lt"),
+ tip:"Accent shifts that push against the meter, the way a piano montuno does. Lock the accents exactly where written and feel the tension.", focus:"Accent displacement and syncopation."},
+{n:"Double strokes", sub:4, pat:P("ht ht lt lt ht ht lt lt ht ht lt lt ht ht lt lt"),
+ tip:"Two hits per hand: right right, left left. The bedrock of fast rolls. Make the second hit of each pair as strong as the first.", focus:"Double-stroke evenness for rolls."},
+{n:"Grace notes", sub:4, pat:P("lt lo . lo lt ho . ho lt lo . lo lt ho . ho"),
+ tip:"A tiny soft note just before a main tone gives it a flam, a thickness. The grace note is felt more than heard. Subtle is the goal.", focus:"Ornamenting tones with grace notes."},
+{n:"Tone melody", sub:2, pat:P("ho lo ho ho lo ho lo lo"),
+ tip:"Forget the rock for a bar and just play a melody with open tones across both drums. This is the start of soloing: the drums as pitches.", focus:"Melodic phrasing with open tones."},
+{n:"Trading fours", sub:2, pat:P("lp lt ho lt lp lt ho lt ho hs lo ls ho ho lo lo"),
+ tip:"One bar of groove, one bar of statement. Imagine answering another drummer. Make the second bar speak with slaps and tones.", focus:"Two-bar call and response, with attitude."},
+{n:"Sixteenth fill kit", sub:4, pat:P("ho lt lt ho lo lt lt lo hs lt lt hs lo lo ho ho"),
+ tip:"A bar of pure sixteenth-note fill vocabulary. Steal any beat of this and drop it into a martillo when the song lifts.", focus:"Building a library of fast fills."},
+{n:"Triplet roll", sub:3, pat:P("lt lt lt ho lt lt lt lt ho lt lt ho"),
+ tip:"Triplet rolls building to accented tones. The roll should be a smooth blur, the tone a clear punctuation mark. Relax the wrist.", focus:"Smooth triplet rolls into accents."},
+{n:"Rumba edge", sub:4, pat:P("lo . ls lt . ho . lo ls . lt . ho . ho ."),
+ tip:"Syncopated and conversational, leaning on rumba phrasing. Notice how the rests carry as much weight as the hits. Count out loud.", focus:"Rest-driven syncopation."},
+{n:"Three over four", sub:4, pat:P("ho! lt lt ho! lt lt ho! lt lt ho! lt lt ho! lt lt ho!"),
+ tip:"Accent every third sixteenth and a three-feel floats over the four-feel. Your hands play sixteenths, your ear hears a polyrhythm. Mind-bending and very useful.", focus:"Implying 3 against a 4 pulse."},
+{n:"Solo phrase", sub:4, pat:P("ho ho lo . hs . lt lt lo lo ho . hs hs . ho"),
+ tip:"A full improvised-style phrase: tones, slaps, space, surprise. Play it as written, then start changing notes. This is yours now.", focus:"Putting the whole vocabulary into a statement."},
+{n:"The étude", sub:4, pat:P("lp lt ho lt lp lt ho lt lp lt ho lt lo lt ho ho ho lt lt ho lo lt lt lo hs lt lt hs lo lo ho ho"),
+ tip:"The capstone. Two bars: martillo settling in, then breaking open into a sixteenth-note solo run. If you can play this clean and loose, you are an intermediate-to-advanced bongosero. Go slow, then bring it up to tempo.", focus:"Everything at once. The graduation piece."}
+];
+const TIER1_COUNT = 20;
+
+/* ---------- state ---------- */
+const state = {
+  idx: 0,
+  bpm: 90,
+  metro: true,
+  countIn: true,
+  loop: true,
+  vol: 0.85,
+  mode: null,         // 'hear' | 'practice' | 'play'
+  done: load('done', {}),
+  latency: 60,        // ms, mic compensation
+  centroidThresh: 1500
+};
+
+/* ---------- safe storage (works on Vercel, no-ops in sandbox) ---------- */
+function save(k,v){ try{ localStorage.setItem('martillo_'+k, JSON.stringify(v)); }catch(e){} }
+function load(k,d){ try{ const x=localStorage.getItem('martillo_'+k); return x?JSON.parse(x):d; }catch(e){ return d; } }
+
+/* ---------- audio ---------- */
+const AC = window.AudioContext || window.webkitAudioContext;
+let ctx=null, master=null, noiseBuf=null;
+function initAudio(){
+  if(ctx) return;
+  ctx = new AC();
+  master = ctx.createGain(); master.gain.value = state.vol; master.connect(ctx.destination);
+  const len = ctx.sampleRate*0.5, b = ctx.createBuffer(1,len,ctx.sampleRate), d=b.getChannelData(0);
+  for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
+  noiseBuf=b;
+}
+function resumeAudio(){ if(ctx && ctx.state==='suspended') ctx.resume(); }
+
+function env(g,t,peak,att,dec){
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(Math.max(peak,0.0002),t+att);
+  g.gain.exponentialRampToValueAtTime(0.0005,t+att+dec);
+}
+function noise(t,dur,type,freq,q,peak){
+  const n=ctx.createBufferSource(); n.buffer=noiseBuf; n.loop=true;
+  const f=ctx.createBiquadFilter(); f.type=type; f.frequency.value=freq; f.Q.value=q;
+  const g=ctx.createGain(); env(g,t,peak,0.002,dur);
+  n.connect(f); f.connect(g); g.connect(master);
+  n.start(t); n.stop(t+dur+0.05);
+}
+// drum: 'L' low/hembra, 'H' high/macho ; stroke: o,s,p,t ; vel 0..1
+function playStroke(drum,stroke,t,vel){
+  if(!ctx) return; vel = vel==null?0.9:vel;
+  const low = drum==='L';
+  const f0 = low?168:300;
+  if(stroke==='o'){ // open ringing tone
+    const o1=ctx.createOscillator(), o2=ctx.createOscillator(), g=ctx.createGain();
+    o1.type='sine'; o2.type='triangle';
+    o1.frequency.setValueAtTime(f0*1.0,t); o1.frequency.exponentialRampToValueAtTime(f0*0.84,t+0.16);
+    o2.frequency.setValueAtTime(f0*1.62,t); o2.frequency.exponentialRampToValueAtTime(f0*1.25,t+0.12);
+    const g2=ctx.createGain(); g2.gain.value=0.35;
+    env(g,t,0.85*vel,0.004, low?0.34:0.26);
+    o1.connect(g); o2.connect(g2); g2.connect(g); g.connect(master);
+    o1.start(t);o2.start(t);o1.stop(t+0.5);o2.stop(t+0.4);
+    noise(t,0.025,'bandpass',low?420:820,0.7,0.22*vel);
+  } else if(stroke==='s'){ // slap, sharp crack
+    noise(t,0.05,'highpass',low?1600:2400,0.5,0.85*vel);
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type='triangle'; o.frequency.setValueAtTime(f0*2.1,t); o.frequency.exponentialRampToValueAtTime(f0*1.4,t+0.04);
+    env(g,t,0.5*vel,0.001,0.05); o.connect(g); g.connect(master); o.start(t); o.stop(t+0.1);
+  } else if(stroke==='p'){ // heel, low thud
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(f0*0.78,t); o.frequency.exponentialRampToValueAtTime(f0*0.6,t+0.08);
+    env(g,t,0.7*vel,0.003,0.10); o.connect(g); g.connect(master); o.start(t); o.stop(t+0.18);
+    noise(t,0.02,'lowpass',300,0.6,0.18*vel);
+  } else { // tip, light fingertip tap
+    noise(t,0.03,'bandpass',low?900:1500,1.1,0.30*vel);
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(f0*1.3,t);
+    env(g,t,0.18*vel,0.002,0.04); o.connect(g); g.connect(master); o.start(t); o.stop(t+0.08);
+  }
+}
+function metroClick(t,accent){
+  const o=ctx.createOscillator(),g=ctx.createGain();
+  o.type='square'; o.frequency.value=accent?1600:1050;
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(accent?0.32:0.18,t+0.001);
+  g.gain.exponentialRampToValueAtTime(0.0004,t+0.045);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t+0.06);
+}
+
+/* ---------- scheduler (lookahead, Chris Wilson style) ---------- */
+const LOOKAHEAD=25, SCHED_AHEAD=0.12;
+let playing=false, schedTimer=null;
+let stepGlobal=0, nextTime=0, countInSlots=0;
+let visualQ=[];          // {slot,time,drum,stroke,acc}
+let expectedHits=[];     // {time,drum,stroke} for the ear to grade against
+function lesson(){ return LESSONS[state.idx]; }
+function totalSlots(){ return lesson().pat.length; }
+function slotsPerBeat(){ return lesson().sub; }
+function slotDur(){ return (60/state.bpm)/slotsPerBeat(); }
+
+function startTransport(mode){
+  initAudio(); resumeAudio();
+  stopTransport(true);
+  state.mode = mode;
+  playing = true;
+  visualQ=[]; expectedHits=[];
+  countInSlots = state.countIn ? slotsPerBeat()*4 : 0;
+  stepGlobal = -countInSlots;
+  nextTime = ctx.currentTime + 0.12;
+  setEar(mode==='hear' ? 'playing target' : 'listening...');
+  updateTransportUI();
+  if(mode!=='hear') startListening();
+  scheduler();
+  requestAnimationFrame(visualLoop);
+}
+function stopTransport(silent){
+  playing=false; clearTimeout(schedTimer); schedTimer=null;
+  clearPlayhead();
+  if(!silent){ state.mode=null; setEar('idle'); updateTransportUI(); }
+  stopListening();
+}
+function scheduler(){
+  if(!playing) return;
+  while(nextTime < ctx.currentTime + SCHED_AHEAD){
+    const g = stepGlobal;
+    if(g < 0){
+      // count-in: click on each beat
+      if(((g % slotsPerBeat())+slotsPerBeat())%slotsPerBeat()===0)
+        metroClick(nextTime, (((g+countInSlots)%(slotsPerBeat()*4))===0));
+      pushVisual(g, nextTime, null);
+    } else {
+      const slot = g % totalSlots();
+      const cell = lesson().pat[slot];
+      const onBeat = (slot % slotsPerBeat())===0;
+      if(state.metro && onBeat) metroClick(nextTime, slot===0 ? true:false);
+      if(cell){
+        const vel = cell.acc?1.0:0.62;
+        if(state.mode!=='practice') playStroke(cell.d, cell.s, nextTime, vel);
+        if(state.mode!=='hear') expectedHits.push({time:nextTime,drum:cell.d,stroke:cell.s});
+      }
+      pushVisual(g, nextTime, cell);
+      // stop if not looping and we finished the pattern
+      if(!state.loop && slot===totalSlots()-1){
+        const endAt=nextTime+slotDur();
+        schedTimer=setTimeout(()=>{ if(playing) stopTransport(false); }, (endAt-ctx.currentTime)*1000+120);
+      }
+    }
+    nextTime += slotDur();
+    stepGlobal++;
+  }
+  schedTimer=setTimeout(scheduler, LOOKAHEAD);
+}
+function pushVisual(g,time,cell){ visualQ.push({g,time,cell}); }
+
+/* ---------- visual sync ---------- */
+const els={};
+function visualLoop(){
+  if(!playing && visualQ.length===0){ clearPlayhead(); return; }
+  const now = ctx?ctx.currentTime:0;
+  while(visualQ.length && visualQ[0].time <= now){
+    const v=visualQ.shift();
+    if(v.g<0){ movePlayhead(-1); continue; }
+    const slot = v.g % totalSlots();
+    movePlayhead(slot);
+    if(v.cell && state.mode!=='practice') flashDrum(v.cell.d, v.cell.s, v.cell.acc);
+    else if(v.cell && state.mode==='practice') ; // in practice we flash on YOUR hits, not the target
+  }
+  if(playing) requestAnimationFrame(visualLoop);
+  else clearPlayhead();
+}
+
+const STROKE_NAME={o:'open',s:'slap',p:'heel',t:'tip'};
+function flashDrum(drum,stroke,acc){
+  const el = drum==='L'?els.drumLow:els.drumHigh;
+  const badge = drum==='L'?els.badgeLow:els.badgeHigh;
+  el.classList.remove('hit','glow-low','glow-high'); void el.offsetWidth;
+  el.classList.add('hit', drum==='L'?'glow-low':'glow-high');
+  setTimeout(()=>el.classList.remove('hit','glow-low','glow-high'), acc?260:170);
+  // ripple
+  const r=document.createElement('div'); r.className='ripple';
+  const sz = el.clientWidth*0.5; r.style.width=r.style.height=sz+'px';
+  r.style.left=(el.clientWidth/2 - sz/2)+'px'; r.style.top=(el.clientHeight/2 - sz/2)+'px';
+  r.style.borderColor = drum==='L'?'var(--low-glow)':'var(--high-glow)';
+  el.appendChild(r); setTimeout(()=>r.remove(),460);
+  // badge
+  badge.textContent = STROKE_NAME[stroke]||'';
+  badge.classList.remove('show'); void badge.offsetWidth; badge.classList.add('show');
+}
+function movePlayhead(slot){
+  const ph=els.playhead; if(!ph) return;
+  if(slot<0){ ph.style.opacity=0; return; }
+  const lane=els.laneRef;
+  if(!lane){ return; }
+  const cells=lane.children; if(!cells[slot]) return;
+  const c=cells[slot];
+  ph.style.opacity=1;
+  ph.style.left=(c.offsetLeft)+'px';
+  // highlight current cells
+  document.querySelectorAll('.cell.cur').forEach(x=>x.classList.remove('cur'));
+}
+function clearPlayhead(){ if(els.playhead) els.playhead.style.opacity=0; }
+
+/* ---------- the ear: mic onset detection + grading ---------- */
+let micStream=null, micSrc=null, analyser=null, micRAF=null;
+let td=null, fd=null, lastOnset=0, calibrating=false, calData={low:[],high:[]};
+let grade={hits:0,inTime:0,offsets:[]};
+let prevEnergy=0;
+
+async function startListening(){
+  try{
+    if(!micStream){
+      micStream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+      micSrc = ctx.createMediaStreamSource(micStream);
+      analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024; analyser.smoothingTimeConstant=0;
+      micSrc.connect(analyser);
+      td = new Float32Array(analyser.fftSize);
+      fd = new Float32Array(analyser.frequencyBinCount);
+    }
+    grade={hits:0,inTime:0,offsets:[]};
+    updateGradeUI();
+    lastOnset=0; prevEnergy=0;
+    micLoop();
+  }catch(e){
+    setEar('mic blocked');
+    setMsg("The ear could not reach your microphone. Allow mic access in the browser, then press Practice again. You can still use <b>Hear it</b> and the metronome without it.");
+  }
+}
+function stopListening(){ if(micRAF) cancelAnimationFrame(micRAF); micRAF=null; }
+
+function centroid(){
+  analyser.getFloatFrequencyData(fd);
+  let num=0,den=0;
+  const ny=ctx.sampleRate/2, n=fd.length;
+  for(let i=0;i<n;i++){
+    const mag=Math.pow(10, fd[i]/20);
+    const freq=i/n*ny;
+    num+=freq*mag; den+=mag;
+  }
+  return den>0?num/den:0;
+}
+function rms(){
+  analyser.getFloatTimeDomainData(td);
+  let s=0; for(let i=0;i<td.length;i++) s+=td[i]*td[i];
+  return Math.sqrt(s/td.length);
+}
+function micLoop(){
+  micRAF=requestAnimationFrame(micLoop);
+  if(!analyser) return;
+  const e=rms();
+  const now=ctx.currentTime;
+  const rising = e>0.018 && e>prevEnergy*1.6;
+  if(rising && (now-lastOnset)>0.075){
+    lastOnset=now;
+    const cen=centroid();
+    onOnset(now, cen, e);
+  }
+  prevEnergy = e*0.6 + prevEnergy*0.4;
+}
+function onOnset(t, cen, e){
+  // classify drum by spectral centroid vs threshold
+  if(calibrating){
+    (calStep<3?calData.low:calData.high).push(cen);
+    calStep++;
+    setMsg(`Calibrating: ${calStep<3?'low drum':'high drum'} hit ${(calStep%3)+0}/3 captured. ` +
+           (calStep<3?'Hit the <b>low</b> drum.':'Now hit the <b>high</b> drum.'));
+    flashDetected(cen<state.centroidThresh?'L':'H', t, null);
+    if(calStep>=6) finishCal();
+    return;
+  }
+  const drum = cen < state.centroidThresh ? 'L':'H';
+  // grade against expected hits, compensating mic latency
+  const adj = t - state.latency/1000;
+  let best=null,bestErr=1e9;
+  for(const h of expectedHits){
+    const err = adj - h.time;
+    if(Math.abs(err)<Math.abs(bestErr)){ bestErr=err; best=h; }
+  }
+  const win = slotDur()*0.6;
+  flashDetected(drum, t, best);
+  if(best && Math.abs(bestErr) <= Math.max(win,0.16)){
+    const ms = bestErr*1000;
+    grade.hits++; grade.offsets.push(ms);
+    const inTime = Math.abs(ms) <= 55;
+    if(inTime) grade.inTime++;
+    const right = drum===best.drum;
+    needleTo(ms);
+    els.lastHit.textContent = (drum==='L'?'LOW':'HIGH')+' · '+(STROKE_NAME[best.stroke]||'');
+    els.lastHitSub.textContent = `${ms>0?'+':''}${ms.toFixed(0)} ms ${Math.abs(ms)<=55?'· locked':ms<0?'· early':'· late'}` +
+       (right?'':` · expected ${best.drum==='L'?'low':'high'}`);
+    coach(ms, right, best.drum);
+    updateGradeUI();
+  } else {
+    // an extra hit with no target nearby
+    els.lastHit.textContent = (drum==='L'?'LOW':'HIGH')+' · extra';
+    els.lastHitSub.textContent = 'no target near this hit';
+  }
+}
+function flashDetected(drum,t,best){
+  // light the drum the player actually hit (slightly different feel than target playback)
+  const el = drum==='L'?els.drumLow:els.drumHigh;
+  el.classList.add(drum==='L'?'glow-low':'glow-high');
+  setTimeout(()=>el.classList.remove('glow-low','glow-high'),120);
+}
+let coachClock=0;
+function coach(ms, right, expDrum){
+  const now=performance.now(); if(now-coachClock<700) return; coachClock=now;
+  let m='';
+  if(!right) m = `That read as the wrong drum. Aim for the ${expDrum==='L'?'big low':'small high'} one.`;
+  else if(Math.abs(ms)<=40) m = 'Locked in. That is the pocket.';
+  else if(ms<-90) m = 'Rushing hard. Let the click come to you, breathe into beat one.';
+  else if(ms<0) m = 'A touch early. Relax the hand and trust the tempo.';
+  else if(ms>90) m = 'Dragging. Lift your hands a hair sooner.';
+  else m = 'Slightly behind. Lean forward into the beat.';
+  els.coach.textContent=m;
+}
+function needleTo(ms){
+  // map -120..120 ms to 8%..92%
+  const clamp=Math.max(-120,Math.min(120,ms));
+  const pct = 50 + (clamp/120)*42;
+  els.needle.style.left=pct+'%';
+  els.needle.style.background = Math.abs(ms)<=55?'var(--good)':Math.abs(ms)<=90?'var(--warn)':'var(--bad)';
+}
+function updateGradeUI(){
+  const acc = grade.hits? Math.round(grade.inTime/grade.hits*100):0;
+  els.statAcc.textContent = grade.hits? acc+'%':'·';
+  els.statHits.textContent = grade.hits;
+  const avg = grade.offsets.length? grade.offsets.reduce((a,b)=>a+b,0)/grade.offsets.length:0;
+  els.statOff.innerHTML = (avg>0?'+':'')+avg.toFixed(0)+'<small style="font-size:11px"> ms</small>';
+}
+
+/* calibration */
+let calStep=0;
+function startCal(){
+  initAudio(); resumeAudio();
+  startListening().then(()=>{
+    calibrating=true; calStep=0; calData={low:[],high:[]};
+    els.btnCal.classList.add('on');
+    setEar('calibrating');
+    setMsg('Calibration: hit the <b>low</b> drum 3 times, then the <b>high</b> drum 3 times, evenly. This teaches the ear your particular drums.');
+  });
+}
+function finishCal(){
+  calibrating=false; els.btnCal.classList.remove('on');
+  const avg=a=>a.reduce((x,y)=>x+y,0)/Math.max(a.length,1);
+  const lo=avg(calData.low), hi=avg(calData.high);
+  if(lo>0&&hi>0&&hi>lo){ state.centroidThresh=(lo+hi)/2; save('cthresh',state.centroidThresh); }
+  setEar('idle'); stopListening();
+  setMsg(`Calibrated. Low drum centred near ${lo.toFixed(0)} Hz, high near ${hi.toFixed(0)} Hz, split at ${state.centroidThresh.toFixed(0)} Hz. Now press <b>Practice</b>.`);
+}
+
+/* ---------- UI rendering ---------- */
+function setEar(s){ if(els.earState) els.earState.textContent=s; }
+function setMsg(html){ if(els.msg) els.msg.innerHTML=html; }
+function hint(text){ const h=els.hint; h.textContent=text; h.classList.add('show'); clearTimeout(h._t); h._t=setTimeout(()=>h.classList.remove('show'),1800); }
+
+const SYM={o:'O',s:'X',p:'H',t:'·'};
+function renderStrip(){
+  const L=lesson(), n=L.pat.length, spb=L.sub;
+  const strip=els.strip; strip.innerHTML='';
+  function lane(name,drum){
+    const row=document.createElement('div'); row.className='lanerow';
+    const nm=document.createElement('div'); nm.className='lane-name'; nm.textContent=name;
+    const lane=document.createElement('div'); lane.className='lane';
+    for(let i=0;i<n;i++){
+      const c=document.createElement('div'); c.className='cell';
+      if(i%spb===0) c.classList.add('beat');
+      const cell=L.pat[i];
+      if(cell && cell.d===drum){
+        c.classList.add(drum==='L'?'fill-low':'fill-high');
+        if(cell.acc) c.classList.add('accent');
+        const s=document.createElement('span'); s.className='sym'; s.textContent=SYM[cell.s]; c.appendChild(s);
+      }
+      lane.appendChild(c);
+    }
+    if(drum==='H'){ // attach playhead to the top lane, reference for movement
+      const ph=document.createElement('div'); ph.className='playhead-col'; ph.id='playhead';
+      lane.appendChild(ph); els.playhead=ph; els.laneRef=lane;
+    }
+    row.appendChild(nm); row.appendChild(lane); strip.appendChild(row);
+  }
+  lane('Macho','H');
+  lane('Hembra','L');
+  // count row
+  const cr=document.createElement('div'); cr.className='countrow';
+  const sp=document.createElement('div'); const cc=document.createElement('div'); cc.className='counts';
+  const sym = spb===2?['1','&','2','&','3','&','4','&']
+            : spb===3?['1','t','l','2','t','l','3','t','l','4','t','l']
+            : ['1','e','&','a','2','e','&','a','3','e','&','a','4','e','&','a'];
+  for(let i=0;i<n;i++){ const d=document.createElement('div'); d.className='c'+(i%spb===0?' on':''); d.textContent=sym[i%sym.length]; cc.appendChild(d); }
+  cr.appendChild(sp); cr.appendChild(cc); strip.appendChild(cr);
+}
+
+function renderLessons(){
+  const list=els.list; list.innerHTML='';
+  let tierDrawn={1:false,2:false};
+  LESSONS.forEach((L,i)=>{
+    const tier = i<TIER1_COUNT?1:2;
+    if(!tierDrawn[tier]){
+      const t=document.createElement('div'); t.className='tierlabel'+(tier===2?' two':'');
+      t.textContent = tier===1?'Tier 1 · beginner to intermediate':'Tier 2 · intermediate to expert';
+      list.appendChild(t); tierDrawn[tier]=true;
+    }
+    const row=document.createElement('div'); row.className='lrow'+(i===state.idx?' active':'')+(state.done[i]?' done':'');
+    row.dataset.i=i;
+    row.innerHTML=`<span class="num">${String(i+1).padStart(2,'0')}</span>
+      <span class="nm">${L.n}<small>${L.focus}</small></span>
+      <span class="chk">✓</span>`;
+    row.querySelector('.chk').addEventListener('click',e=>{ e.stopPropagation(); toggleDone(i); });
+    row.addEventListener('click',()=>loadLesson(i));
+    list.appendChild(row);
+  });
+  els.progCount.textContent = Object.values(state.done).filter(Boolean).length+' / '+LESSONS.length;
+}
+function toggleDone(i){ state.done[i]=!state.done[i]; save('done',state.done); renderLessons(); }
+
+function renderLegend(){
+  const items=[
+    ['fill-high','O','Open tone, fingers ring the head'],
+    ['fill-high','X','Slap, a sharp cracking stop'],
+    ['fill-low','H','Heel, a palm thud'],
+    ['fill-low','·','Tip, a light fingertip tap']
+  ];
+  els.legend.innerHTML = items.map(([cls,sym,txt])=>
+    `<span class="li"><span class="sw ${cls}">${sym}</span>${txt}</span>`).join('')
+    + `<span class="li"><span class="sw" style="background:var(--low)"></span>Hembra = low / big drum</span>`
+    + `<span class="li"><span class="sw" style="background:var(--high)"></span>Macho = high / small drum</span>`;
+}
+
+function renderNote(){
+  const L=lesson();
+  els.note.innerHTML=`<h3>Lesson ${state.idx+1}: ${L.n}</h3><p>${L.tip}</p><div class="focus">Focus: ${L.focus}</div>`;
+  els.nowTitle.textContent=L.n;
+  els.nowTier.textContent = state.idx<TIER1_COUNT?'Tier 1':'Tier 2';
+}
+
+function loadLesson(i){
+  const wasPlaying=playing; stopTransport(false);
+  state.idx=i; save('lastIdx',i);
+  renderStrip(); renderNote(); renderLessons();
+  // reset ear readouts
+  grade={hits:0,inTime:0,offsets:[]}; updateGradeUI();
+  els.lastHit.textContent='·'; els.lastHitSub.textContent='waiting for your hands';
+  els.coach.textContent=''; needleTo(0);
+}
+
+/* ---------- transport UI ---------- */
+function updateTransportUI(){
+  [['btnHear','hear'],['btnPractice','practice'],['btnPlayAlong','play']].forEach(([id,m])=>{
+    els[id].classList.toggle('armed', state.mode===m);
+    els[id].classList.toggle('on', state.mode===m);
+  });
+}
+
+/* ---------- wiring ---------- */
+function $(id){ return document.getElementById(id); }
+function wire(){
+  ['drumLow','drumHigh','badgeLow','badgeHigh','strip','list','progCount','note',
+   'nowTitle','nowTier','legend','msg','coach','earState','lastHit','lastHitSub',
+   'statAcc','statHits','statOff','needle','btnCal','hint',
+   'bpmVal','bpmRange'].forEach(id=>els[id]=$(id));
+
+  $('btnHear').addEventListener('click',()=>startTransport('hear'));
+  $('btnPractice').addEventListener('click',()=>startTransport('practice'));
+  $('btnPlayAlong').addEventListener('click',()=>startTransport('play'));
+  $('btnStop').addEventListener('click',()=>stopTransport(false));
+  els.btnHear=$('btnHear'); els.btnPractice=$('btnPractice'); els.btnPlayAlong=$('btnPlayAlong');
+
+  // tap drums to hear them
+  [['drumLow','L'],['drumHigh','H']].forEach(([id,d])=>{
+    $(id).addEventListener('pointerdown',()=>{
+      initAudio(); resumeAudio();
+      playStroke(d,'o',ctx.currentTime,0.9); flashDrum(d,'o',true);
+    });
+  });
+
+  // tempo
+  function setBpm(v){
+    state.bpm=Math.max(40,Math.min(200,Math.round(v)));
+    els.bpmVal.innerHTML=state.bpm+'<small> bpm</small>';
+    els.bpmRange.value=state.bpm; save('bpm',state.bpm);
+  }
+  els.bpmRange.addEventListener('input',e=>setBpm(+e.target.value));
+  $('bpmUp').addEventListener('click',()=>setBpm(state.bpm+1));
+  $('bpmDown').addEventListener('click',()=>setBpm(state.bpm-1));
+
+  // tap tempo
+  let taps=[];
+  $('tapTempo').addEventListener('click',()=>{
+    const t=performance.now(); taps.push(t); taps=taps.filter(x=>t-x<2500);
+    if(taps.length>=2){
+      let sum=0; for(let i=1;i<taps.length;i++) sum+=taps[i]-taps[i-1];
+      const bpm=60000/(sum/(taps.length-1)); setBpm(bpm); hint('Tap tempo: '+Math.round(bpm)+' bpm');
+    } else hint('Keep tapping the beat...');
+  });
+
+  // toggles
+  function tg(id,key,label){
+    $(id).addEventListener('click',()=>{
+      state[key]=!state[key]; $(id).classList.toggle('on',state[key]); save(key,state[key]);
+      hint(label+': '+(state[key]?'on':'off'));
+    });
+  }
+  tg('tgMetro','metro','Metronome'); tg('tgCount','countIn','Count-in'); tg('tgLoop','loop','Loop');
+
+  // volume
+  $('volRange').addEventListener('input',e=>{
+    state.vol=+e.target.value/100; if(master) master.gain.value=state.vol; save('vol',state.vol);
+  });
+
+  // calibration + latency
+  $('btnCal').addEventListener('click',()=>{ if(calibrating){ finishCal(); } else startCal(); });
+  $('latRange').addEventListener('input',e=>{
+    state.latency=+e.target.value; $('latVal').textContent=state.latency+' ms'; save('lat',state.latency);
+  });
+
+  // keyboard: space = practice/stop, h = hear
+  document.addEventListener('keydown',e=>{
+    if(e.code==='Space'){ e.preventDefault(); playing?stopTransport(false):startTransport('practice'); }
+    else if(e.key==='h'||e.key==='H'){ startTransport('hear'); }
+    else if(e.key==='ArrowRight'){ loadLesson(Math.min(LESSONS.length-1,state.idx+1)); }
+    else if(e.key==='ArrowLeft'){ loadLesson(Math.max(0,state.idx-1)); }
+  });
+
+  // recompute playhead position on resize
+  window.addEventListener('resize',()=>{ /* lane offsets recompute naturally next frame */ });
+}
+
+/* ---------- boot ---------- */
+function boot(){
+  // restore saved prefs
+  state.bpm = load('bpm',90); state.vol=load('vol',0.85);
+  state.metro=load('metro',true); state.countIn=load('countIn',true); state.loop=load('loop',true);
+  state.latency=load('lat',60); state.centroidThresh=load('cthresh',1500);
+  state.idx=Math.min(load('lastIdx',0),LESSONS.length-1);
+
+  wire();
+  els.bpmVal.innerHTML=state.bpm+'<small> bpm</small>'; els.bpmRange.value=state.bpm;
+  $('volRange').value=Math.round(state.vol*100);
+  $('latRange').value=state.latency; $('latVal').textContent=state.latency+' ms';
+  ['tgMetro','tgCount','tgLoop'].forEach((id,k)=>{
+    const key=['metro','countIn','loop'][k]; $(id).classList.toggle('on',state[key]);
+  });
+  renderLegend(); renderLessons(); loadLesson(state.idx);
+  setMsg("Tap a drum to hear it. Press <b>Hear it</b> to listen to the lesson, then <b>Practice</b> to play along while the ear grades your timing.");
+}
+document.addEventListener('DOMContentLoaded',boot);
+</script>
+</body>
+</html>
